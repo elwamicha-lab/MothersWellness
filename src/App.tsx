@@ -15,6 +15,7 @@ import { ReviewerPanel } from './components/ReviewerPanel';
 import { AboutQuestionsModal } from './components/AboutQuestionsModal';
 import { AllRolesChart } from './components/AllRolesChart';
 import { CareerPlanView } from './components/CareerPlanView';
+import { Watermark } from './components/Watermark';
 import {
   Sparkles,
   ArrowRight,
@@ -437,7 +438,8 @@ export default function App() {
   }, [step, currentQuestionIndex]);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col justify-between selection:bg-blue-100 selection:text-blue-900">
+    <div className="relative min-h-screen bg-[#FAF7F2] flex flex-col justify-between selection:bg-[#F4DDD2] selection:text-[#8C3E2D]">
+      <Watermark />
       {/* Top Header */}
       <Header
         isDemoActive={isDemoActive}
@@ -1983,8 +1985,8 @@ export default function App() {
       <footer className="w-full py-4 border-t border-[#EFEAE2] bg-[#FAF7F2]/90 text-center text-xs text-[#7A6E69] no-print">
         <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>{uiStrings.en.prototypeLabel}</span>
-          <span className="text-[11px] text-[#A89B95]">
-            Wellness Conversations for working mothers · Maternal wellbeing and career re-entry support
+          <span className="text-[11px] text-[#7A6E69]">
+            Wellness Conversations for working mothers · Futureproof Consulting
           </span>
           <button
             onClick={() => setAboutModalOpen(true)}
