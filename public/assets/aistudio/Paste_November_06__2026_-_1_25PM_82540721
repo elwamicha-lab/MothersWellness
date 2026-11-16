@@ -1,0 +1,1207 @@
+# Google AI Studio Build Prompt: Conversations w/ Dr. Wamicha (Prototype v0.1)
+
+Copy everything below the line into Google AI Studio (Build mode).
+
+---
+
+## 1. What to build
+
+Build a mobile-first web app called **Conversations w/ Dr. Wamicha**, subtitled **Your wellbeing and your way back to work**.
+
+It is a guided conversation that helps women, especially mothers who gave birth in the last 12 months, do two things:
+
+1. **Wellbeing Check:** a short, private screening of mood, anxiety, stress, life changes and support, using validated questionnaires, with clear next steps and a route to human help.
+2. **Career Re-entry Plan:** a match to the best-fit career paths based on her skills, interests, lived experience and work needs, with a 24-week return plan paced to her wellbeing.
+
+The two modules share one profile and one conversation, but each can be used on its own. The career plan's pace comes from the Wellbeing Check.
+
+This is a **prototype for clinicians, partners and funders to review**. It must be clearly labelled "Prototype — not for clinical use" in the footer of every screen.
+
+## 2. Who "Dr. Wamicha" is in the app (must be clear to users)
+
+The guide is an **AI guide shaped by Dr. Wamicha's approach**. It is not a person and not a medical professional. Show this clearly:
+- On the welcome screen: "I'm an AI guide, shaped by Dr. Elizabeth Wamicha's approach to community-centred technology. I'm not a doctor or counsellor, and I can't diagnose. I can help you check in on your wellbeing and plan your return to work."
+- A small persistent "AI guide" label next to the guide's name in the conversation header.
+- The guide's avatar is a simple, friendly abstract illustration (for example a speech bubble with a small leaf), never a photo or a realistic human face.
+
+## 3. Non-negotiable rules
+
+**Safety**
+- The Wellbeing Check is **fully rule-based**. Screening items, options, scores, levels and messages come only from the seed data in section 12. **No AI model ever scores, interprets or gives advice on wellbeing answers.**
+- **Immediate safety interrupt:** the moment a user selects any answer scoring above 0 on **EPDS item 10** or **PHQ-9 item 9** (the self-harm items), stop the questionnaire and show the Safety screen (section 6) straight away. Do not wait for the end. Career planning is paused for that session.
+- Crisis contacts come only from `crisisContacts` in the seed data. They are placeholders: show them with a visible "[Prototype placeholder — to be confirmed by clinical lead]" tag. Never invent phone numbers.
+- Never use the words "diagnosis", "you have depression" or similar. Use "your answers suggest…".
+
+**Validated instruments**
+- Show EPDS, PHQ-9 and GAD-7 items and options **exactly** as in the seed data, in English. Do not reword, shorten, reorder or translate them. Show the attribution text for each instrument in an "About these questions" link.
+- If the interface language is set to anything other than English, still show these items in English with a note: "Validated translations will be added by our clinical team."
+
+**Privacy**
+- Client-side only: no backend, no login, no database, no analytics.
+- **Wellbeing answers never leave the device and are never sent to the AI model.**
+- Progress is **not** saved by default. Offer a toggle "Save my progress on this device" (off by default). If on, save to localStorage; always offer "Delete everything".
+- Ask for first name only, optional.
+
+**Where AI (Gemini) is allowed — career module only**
+1. **Skills from lived experience:** the user may describe, in her own words, experiences she's proud of (work, home, community, volunteering). Send *only that text* to Gemini with an instruction to return JSON suggesting a 1–5 rating for each of the 10 skills in `skills`, with a one-line reason each. Show these as **suggestions she must confirm or change**; never apply them silently.
+2. **Plan narrative:** after the deterministic plan is built, send Gemini *only*: her first name (if given), the pace name, the top career path, the skill gaps, and the plan steps. Ask it to write a warm, plain-language paragraph (max 120 words) introducing her plan. It must not change the pace, add health advice, or mention scores. If the call fails, show the plan without the paragraph.
+- Use the Gemini model available in AI Studio. Handle errors gracefully; the app must work fully if AI calls fail.
+
+**Build**
+- React + TypeScript + Tailwind. Recharts only for the one chart specified. Small bundle; works on low-end Android phones.
+- Mobile first (360–400px), tap targets ≥ 44px, body text ≥ 16px, WCAG AA contrast, never colour alone for meaning.
+- Use all seed data verbatim from a single `seedData` constant.
+
+## 4. Visual design: white, soft blue and green, warm and calm
+
+- **Background:** white #FFFFFF; cards #F7FAFC; lots of space.
+- **Blue #1565C0:** guide's messages accent, primary buttons, career module. Light blue #E3F2FD for the guide's chat bubbles.
+- **Green #2E7D32:** wellbeing module, progress, positive states. Light green #E8F5E9 for the user's selected answers and success panels.
+- **Wellbeing levels** (always show the word, not just colour): Low #E8F5E9 / #2E7D32 · Moderate #E3F2FD / #1565C0 · High #FFF3E0 / #E65100 · Urgent #FDECEA / #C62828.
+- **Text:** #1F2937, secondary #6B7280.
+- **Font:** Nunito Sans or Inter (Google Fonts) with system fallback; rounded corners 16px; soft shadows; gentle motion only.
+- Tone of visuals: warm and calm, never clinical or alarming (except the Safety screen, which is calm but unmistakable).
+
+## 5. Conversation format
+
+The whole experience is a **guided conversation**, not a form:
+- The guide's messages appear as bubbles on the left; the user's choices appear as bubbles on the right after she taps them.
+- Questionnaire answers are **tappable option cards** under the guide's message (never free text, never sliders).
+- Show a slim progress bar for each part ("Wellbeing Check · 4 of 10").
+- "Back" lets her change her previous answer.
+- Between sections, the guide adds short, warm transitions from `uiTransitions` (write these yourself; plain, kind, under 25 words each).
+- A "Pause" button lets her stop at any time.
+
+## 6. Screens and flow
+
+**1. Welcome.** Guide introduction (section 2), what the two parts do, time needed (Wellbeing ~5 min, Career ~8 min), privacy promise ("Your wellbeing answers stay on this phone"), and three buttons: "Start with my wellbeing" (recommended), "Go straight to my career plan", "Load a demo person". Footer: prototype label.
+
+**2. About you.** First name (optional), country (Kenya / Nigeria / Other), city, age group, "Have you given birth in the last 12 months?" (Yes / No), if yes how long ago, current work situation, length of career break. All options from `profileOptions`.
+
+**3. Wellbeing Check.**
+- If she gave birth in the last 12 months → **EPDS** (10 items, stem "In the past 7 days:").
+- Otherwise → **PHQ-9** then **GAD-7** (stem "Over the last 2 weeks, how often have you been bothered by the following problems?").
+- Then everyone → **Life and support** (8 items, agree scale). Introduce it as "a few questions about your life right now".
+- If she chose "Go straight to my career plan", ask once: "Your plan is paced to your wellbeing. Would you like a 5-minute check first?" If she skips, use pace **"Gradual return"** and note in the plan that the pace is a default.
+
+**Safety screen** (triggered as in section 3): calm red-accented card with the Urgent message from `wellbeingGuidance`, the crisis contacts for her country (placeholders), a "Call" button for each number (tel: link, disabled while placeholders), and "Show me the nearest health facility" (opens a map search for "health facility near me"). A gentle option: "I'm safe right now — continue later". Career planning stays paused for this session.
+
+**4. Wellbeing summary.** Her level (Low / Moderate / High), the matching message and self-care steps from `wellbeingGuidance` and `selfCare`, her support level (Strong / Some / Limited) in one kind sentence, and her **recommended return pace** with its description. For High: a prominent "Talk to a health worker" card with the referral placeholder. Never show raw scores to the user; a "Reviewer view" (section 8) shows them. Button: "Plan my return to work".
+
+**5. Skills and interests.**
+- Optional lived-experience step: "Tell me about something you're proud of: at work, at home or in your community." Text box + "Suggest my skills" (Gemini, section 3). Show the suggestions as editable ratings.
+- Rate each of the 10 `skills` (1–5 option cards with the labels from `skillScale`), then each of the 6 `interests` (labels from `interestScale`, with the description shown under each).
+- Work needs: work from home? hours per week? flexible hours? (from `workNeeds`).
+
+**6. Career matches.** Top 3 paths as cards: role name, overall match /100 as a simple bar, the three sub-scores (skills, interests, fit) as small labelled bars, and the first step. "See all roles" opens a horizontal bar chart (Recharts) of overall match for all roles. Under the top card: "Skills to build" (gaps), shown as friendly chips.
+
+**7. My re-entry plan.** Pace badge, the Gemini intro paragraph (if available), then three phase cards (Weeks 1–4, 5–12, 13–24) built from `paces` plus: Phase 1 adds "Also: [top role's first step]"; Phase 2 adds "Suggested course: [top role's skill-building idea]". If pace is "Pause: safety first", show only the pause steps. Closing note: "Check in on your wellbeing at each phase. If it changes, your plan's pace changes too." Buttons: "Print or save as PDF" (clean print stylesheet) and "Start again".
+
+## 7. Scoring and rules (implement exactly)
+
+**Screening scores**
+- EPDS: each option carries its own score in the seed data (some items are reverse-ordered: use the given score, not the position). Total 0–30.
+- PHQ-9 and GAD-7: Not at all 0 · Several days 1 · More than half the days 2 · Nearly every day 3. PHQ-9 total 0–27; GAD-7 total 0–21.
+- Bands: from `bands` in the seed data (EPDS: 0 Low, 10 Possible, 13 Probable; PHQ-9: 0 Minimal, 5 Mild, 10 Moderate, 15 Moderately severe, 20 Severe; GAD-7: 0 Minimal, 5 Mild, 10 Moderate, 15 Severe).
+
+**Wellbeing level**
+- **Urgent:** EPDS item 10 > 0, or PHQ-9 item 9 > 0.
+- **High:** EPDS ≥ 13, or PHQ-9 ≥ 10, or GAD-7 ≥ 10.
+- **Moderate:** EPDS 10–12, or PHQ-9 5–9, or GAD-7 5–9.
+- **Low:** otherwise.
+
+**Support level**
+- Life items scored Strongly disagree 1 … Strongly agree 5; items L7 and L8 are reversed (score = 6 − value).
+- Average of the 8 items: < 3 Limited · 3 to < 4 Some · ≥ 4 Strong.
+
+**Return pace**
+- Urgent → "Pause: safety first" · High → "Care first" · Moderate **or** support Limited → "Gradual return" · otherwise → "Ready to return".
+
+**Career matching** (for each role in `careers`)
+- Skills match = round( Σ(her skill rating × role weight) ÷ (5 × Σ role weights) × 100 ).
+- Interests match = round( her rating for the role's interest area ÷ 5 × 100 ).
+- Fit = max(0, 100 − 50 if she needs home-working and the role isn't remote − 40 if she can work under 30 hours and the role has no part-time option − 30 if she needs flexible hours and the role isn't flexible).
+- Overall = round(0.45 × skills + 0.30 × interests + 0.25 × fit). Ties broken by library order.
+- Skill gaps for the top role = skills where the role weight ≥ 2 and her rating ≤ 2.
+
+## 8. Demo and reviewer features
+
+- **"Load a demo person"** offers three personas, each fully filled in so a reviewer reaches the plan in under a minute: (1) **Amina**, Nairobi, baby 5 months, EPDS in the Moderate band, some support → Gradual return, top path Virtual or administrative assistant; (2) **Chioma**, Lagos, not postpartum, Low wellbeing, strong support → Ready to return, top path Social media or content manager; (3) **Safety pathway demo**, which jumps to the Safety screen with a banner "Demo of the safety pathway". Show a fixed amber banner "Demo person — not real data" while any demo is active.
+- **"Reviewer view"** toggle (in a small menu, off by default): shows raw scores, bands, which rule fired, and the career sub-scores, so clinicians and partners can check the logic.
+
+## 9. Language
+
+- Interface in **English** for v0.1. Build all interface strings in one `uiStrings` object with `en` keys so Kiswahili and Nigerian Pidgin can be added later.
+- Show a language selector with Kiswahili and Nigerian Pidgin marked "Coming soon".
+
+## 10. Tone
+
+Warm, respectful, plain. Short sentences. Never judgemental, never alarming (except the clear Safety screen). The guide speaks as "I" and calls the user by her first name if given. Use growth language for careers ("your next step", "skills to build") and gentle language for wellbeing ("your answers suggest", "many women feel this way").
+
+## 11. Self-test before finishing
+
+1. All EPDS, PHQ-9, GAD-7 items and options match the seed text exactly, with attribution available.
+2. The right instrument is shown depending on the birth question.
+3. Selecting a non-zero answer to EPDS item 10 or PHQ-9 item 9 immediately opens the Safety screen.
+4. Wellbeing level, support level and pace follow section 7 exactly (check with the Reviewer view).
+5. No wellbeing data is included in any AI request (inspect the request payloads).
+6. AI skill suggestions are only applied after the user confirms them.
+7. The app works fully when AI calls fail.
+8. Career scores, ranking and skill gaps follow section 7.
+9. Progress is not saved unless the toggle is on; "Delete everything" clears it.
+10. Each demo persona produces the described result.
+11. The AI-guide disclosure and the prototype label are visible.
+12. Works at 360px wide; print view is clean.
+
+## 12. Seed data (use verbatim)
+
+```json
+{
+  "instruments": {
+    "epds": {
+      "stem": "In the past 7 days:",
+      "attribution": "Edinburgh Postnatal Depression Scale (EPDS). Source: Cox, J.L., Holden, J.M., and Sagovsky, R. 1987. Detection of postnatal depression: Development of the 10-item Edinburgh Postnatal Depression Scale. British Journal of Psychiatry 150:782-786. May be reproduced without permission provided the authors, title and source are cited in all copies.",
+      "items": [
+        {
+          "n": 1,
+          "text": "I have been able to laugh and see the funny side of things",
+          "options": [
+            {
+              "label": "As much as I always could",
+              "score": 0
+            },
+            {
+              "label": "Not quite so much now",
+              "score": 1
+            },
+            {
+              "label": "Definitely not so much now",
+              "score": 2
+            },
+            {
+              "label": "Not at all",
+              "score": 3
+            }
+          ],
+          "safetyItem": false
+        },
+        {
+          "n": 2,
+          "text": "I have looked forward with enjoyment to things",
+          "options": [
+            {
+              "label": "As much as I ever did",
+              "score": 0
+            },
+            {
+              "label": "Rather less than I used to",
+              "score": 1
+            },
+            {
+              "label": "Definitely less than I used to",
+              "score": 2
+            },
+            {
+              "label": "Hardly at all",
+              "score": 3
+            }
+          ],
+          "safetyItem": false
+        },
+        {
+          "n": 3,
+          "text": "I have blamed myself unnecessarily when things went wrong",
+          "options": [
+            {
+              "label": "Yes, most of the time",
+              "score": 3
+            },
+            {
+              "label": "Yes, some of the time",
+              "score": 2
+            },
+            {
+              "label": "Not very often",
+              "score": 1
+            },
+            {
+              "label": "No, never",
+              "score": 0
+            }
+          ],
+          "safetyItem": false
+        },
+        {
+          "n": 4,
+          "text": "I have been anxious or worried for no good reason",
+          "options": [
+            {
+              "label": "No, not at all",
+              "score": 0
+            },
+            {
+              "label": "Hardly ever",
+              "score": 1
+            },
+            {
+              "label": "Yes, sometimes",
+              "score": 2
+            },
+            {
+              "label": "Yes, very often",
+              "score": 3
+            }
+          ],
+          "safetyItem": false
+        },
+        {
+          "n": 5,
+          "text": "I have felt scared or panicky for no very good reason",
+          "options": [
+            {
+              "label": "Yes, quite a lot",
+              "score": 3
+            },
+            {
+              "label": "Yes, sometimes",
+              "score": 2
+            },
+            {
+              "label": "No, not much",
+              "score": 1
+            },
+            {
+              "label": "No, not at all",
+              "score": 0
+            }
+          ],
+          "safetyItem": false
+        },
+        {
+          "n": 6,
+          "text": "Things have been getting on top of me",
+          "options": [
+            {
+              "label": "Yes, most of the time I haven't been able to cope at all",
+              "score": 3
+            },
+            {
+              "label": "Yes, sometimes I haven't been coping as well as usual",
+              "score": 2
+            },
+            {
+              "label": "No, most of the time I have coped quite well",
+              "score": 1
+            },
+            {
+              "label": "No, I have been coping as well as ever",
+              "score": 0
+            }
+          ],
+          "safetyItem": false
+        },
+        {
+          "n": 7,
+          "text": "I have been so unhappy that I have had difficulty sleeping",
+          "options": [
+            {
+              "label": "Yes, most of the time",
+              "score": 3
+            },
+            {
+              "label": "Yes, sometimes",
+              "score": 2
+            },
+            {
+              "label": "Not very often",
+              "score": 1
+            },
+            {
+              "label": "No, not at all",
+              "score": 0
+            }
+          ],
+          "safetyItem": false
+        },
+        {
+          "n": 8,
+          "text": "I have felt sad or miserable",
+          "options": [
+            {
+              "label": "Yes, most of the time",
+              "score": 3
+            },
+            {
+              "label": "Yes, quite often",
+              "score": 2
+            },
+            {
+              "label": "Not very often",
+              "score": 1
+            },
+            {
+              "label": "No, not at all",
+              "score": 0
+            }
+          ],
+          "safetyItem": false
+        },
+        {
+          "n": 9,
+          "text": "I have been so unhappy that I have been crying",
+          "options": [
+            {
+              "label": "Yes, most of the time",
+              "score": 3
+            },
+            {
+              "label": "Yes, quite often",
+              "score": 2
+            },
+            {
+              "label": "Only occasionally",
+              "score": 1
+            },
+            {
+              "label": "No, never",
+              "score": 0
+            }
+          ],
+          "safetyItem": false
+        },
+        {
+          "n": 10,
+          "text": "The thought of harming myself has occurred to me",
+          "options": [
+            {
+              "label": "Yes, quite often",
+              "score": 3
+            },
+            {
+              "label": "Sometimes",
+              "score": 2
+            },
+            {
+              "label": "Hardly ever",
+              "score": 1
+            },
+            {
+              "label": "Never",
+              "score": 0
+            }
+          ],
+          "safetyItem": true
+        }
+      ]
+    },
+    "phq9": {
+      "stem": "Over the last 2 weeks, how often have you been bothered by the following problems?",
+      "attribution": "PHQ-9 and GAD-7. Developed by Drs. Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke and colleagues, with an educational grant from Pfizer Inc. No permission required to reproduce, translate, display or distribute.",
+      "items": [
+        {
+          "n": 1,
+          "text": "Little interest or pleasure in doing things",
+          "safetyItem": false
+        },
+        {
+          "n": 2,
+          "text": "Feeling down, depressed, or hopeless",
+          "safetyItem": false
+        },
+        {
+          "n": 3,
+          "text": "Trouble falling or staying asleep, or sleeping too much",
+          "safetyItem": false
+        },
+        {
+          "n": 4,
+          "text": "Feeling tired or having little energy",
+          "safetyItem": false
+        },
+        {
+          "n": 5,
+          "text": "Poor appetite or overeating",
+          "safetyItem": false
+        },
+        {
+          "n": 6,
+          "text": "Feeling bad about yourself — or that you are a failure or have let yourself or your family down",
+          "safetyItem": false
+        },
+        {
+          "n": 7,
+          "text": "Trouble concentrating on things, such as reading the newspaper or watching television",
+          "safetyItem": false
+        },
+        {
+          "n": 8,
+          "text": "Moving or speaking so slowly that other people could have noticed? Or the opposite — being so fidgety or restless that you have been moving around a lot more than usual",
+          "safetyItem": false
+        },
+        {
+          "n": 9,
+          "text": "Thoughts that you would be better off dead or of hurting yourself in some way",
+          "safetyItem": true
+        }
+      ]
+    },
+    "gad7": {
+      "stem": "Over the last 2 weeks, how often have you been bothered by the following problems?",
+      "attribution": "PHQ-9 and GAD-7. Developed by Drs. Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke and colleagues, with an educational grant from Pfizer Inc. No permission required to reproduce, translate, display or distribute.",
+      "items": [
+        {
+          "n": 1,
+          "text": "Feeling nervous, anxious or on edge"
+        },
+        {
+          "n": 2,
+          "text": "Not being able to stop or control worrying"
+        },
+        {
+          "n": 3,
+          "text": "Worrying too much about different things"
+        },
+        {
+          "n": 4,
+          "text": "Trouble relaxing"
+        },
+        {
+          "n": 5,
+          "text": "Being so restless that it is hard to sit still"
+        },
+        {
+          "n": 6,
+          "text": "Becoming easily annoyed or irritable"
+        },
+        {
+          "n": 7,
+          "text": "Feeling afraid as if something awful might happen"
+        }
+      ]
+    },
+    "frequencyOptions": [
+      {
+        "label": "Not at all",
+        "score": 0
+      },
+      {
+        "label": "Several days",
+        "score": 1
+      },
+      {
+        "label": "More than half the days",
+        "score": 2
+      },
+      {
+        "label": "Nearly every day",
+        "score": 3
+      }
+    ]
+  },
+  "bands": {
+    "epds": [
+      {
+        "from": 0,
+        "band": "Low"
+      },
+      {
+        "from": 10,
+        "band": "Possible"
+      },
+      {
+        "from": 13,
+        "band": "Probable"
+      }
+    ],
+    "phq9": [
+      {
+        "from": 0,
+        "band": "Minimal"
+      },
+      {
+        "from": 5,
+        "band": "Mild"
+      },
+      {
+        "from": 10,
+        "band": "Moderate"
+      },
+      {
+        "from": 15,
+        "band": "Moderately severe"
+      },
+      {
+        "from": 20,
+        "band": "Severe"
+      }
+    ],
+    "gad7": [
+      {
+        "from": 0,
+        "band": "Minimal"
+      },
+      {
+        "from": 5,
+        "band": "Mild"
+      },
+      {
+        "from": 10,
+        "band": "Moderate"
+      },
+      {
+        "from": 15,
+        "band": "Severe"
+      }
+    ],
+    "support": [
+      {
+        "from": 0,
+        "band": "Limited"
+      },
+      {
+        "from": 3,
+        "band": "Some"
+      },
+      {
+        "from": 4,
+        "band": "Strong"
+      }
+    ],
+    "note": "Commonly used cut-offs; to be confirmed by the clinical lead for the pilot population."
+  },
+  "lifeAndSupport": {
+    "scale": [
+      {
+        "label": "Strongly disagree",
+        "value": 1
+      },
+      {
+        "label": "Disagree",
+        "value": 2
+      },
+      {
+        "label": "Not sure",
+        "value": 3
+      },
+      {
+        "label": "Agree",
+        "value": 4
+      },
+      {
+        "label": "Strongly agree",
+        "value": 5
+      }
+    ],
+    "items": [
+      {
+        "id": "L1",
+        "text": "I have someone I can rely on for practical help with childcare or home responsibilities.",
+        "reversed": false
+      },
+      {
+        "id": "L2",
+        "text": "I have someone I can talk to openly about how I feel.",
+        "reversed": false
+      },
+      {
+        "id": "L3",
+        "text": "I have reliable childcare, or a clear plan for it, if I return to work.",
+        "reversed": false
+      },
+      {
+        "id": "L4",
+        "text": "The changes in my life in recent months feel manageable.",
+        "reversed": false
+      },
+      {
+        "id": "L5",
+        "text": "The expectations I have of myself right now feel realistic.",
+        "reversed": false
+      },
+      {
+        "id": "L6",
+        "text": "I am getting enough rest to manage day to day.",
+        "reversed": false
+      },
+      {
+        "id": "L7",
+        "text": "Money worries are causing me a lot of stress.",
+        "reversed": true
+      },
+      {
+        "id": "L8",
+        "text": "I feel pressure from family or others about when I return to work.",
+        "reversed": true
+      }
+    ],
+    "note": "Non-clinical, not validated; used only for support level and pace."
+  },
+  "wellbeingGuidance": [
+    {
+      "level": "Urgent",
+      "message": "You mentioned thoughts of harming yourself. You deserve support right now, and you do not have to manage this alone. Please contact [crisis line — to be confirmed by clinical lead] or go to the nearest health facility today. If you are in immediate danger, call [emergency number].",
+      "serviceAction": "Show crisis contacts immediately; offer same-day referral to partner clinician; pause career planning.",
+      "status": "DRAFT - pending clinical approval"
+    },
+    {
+      "level": "High",
+      "message": "Your answers suggest you may be having symptoms that deserve professional attention. This is common, and it is treatable. Please speak to a health worker or doctor within the next week.",
+      "serviceAction": "Offer referral to partner clinician within 7 days; suggest repeating the check after speaking to a professional.",
+      "status": "DRAFT - pending clinical approval"
+    },
+    {
+      "level": "Moderate",
+      "message": "Some of your answers suggest you are under real strain. Many women feel this way after big life changes. Talking to a health worker or someone you trust can help, and so can small steps for rest and support.",
+      "serviceAction": "Suggest talking to a health worker; share vetted self-care steps; repeat the check in 2 weeks.",
+      "status": "DRAFT - pending clinical approval"
+    },
+    {
+      "level": "Low",
+      "message": "Your answers suggest you are coping well right now. Keep doing what helps: rest when you can, stay connected with people you trust, and check in again in about a month.",
+      "serviceAction": "Share vetted self-care steps; repeat the check in 4 weeks.",
+      "status": "DRAFT - pending clinical approval"
+    }
+  ],
+  "selfCare": [
+    "Rest when you can, and accept practical help with the baby or home when it is offered.",
+    "Talk regularly with someone you trust about how you are feeling.",
+    "Eat regular meals and drink enough water, even when busy.",
+    "Spend a little time outdoors or moving gently each day if you can.",
+    "Lower the bar: it is okay if not everything gets done.",
+    "Join a mothers' or community group to share experiences."
+  ],
+  "crisisContacts": [
+    {
+      "country": "Kenya",
+      "crisisLine": "[to be confirmed]",
+      "emergency": "[to be confirmed]",
+      "referralPoint": "[to be confirmed]"
+    },
+    {
+      "country": "Nigeria",
+      "crisisLine": "[to be confirmed]",
+      "emergency": "[to be confirmed]",
+      "referralPoint": "[to be confirmed]"
+    }
+  ],
+  "paces": [
+    {
+      "name": "Pause: safety first",
+      "description": "Your wellbeing comes first. We have paused career planning so you can focus on getting support now. You can return to it whenever you are ready.",
+      "phases": [
+        {
+          "weeks": "Now",
+          "steps": "Get support today: contact the crisis line or a health facility."
+        },
+        {
+          "weeks": "Now",
+          "steps": "Let someone you trust know how you are feeling."
+        },
+        {
+          "weeks": "Now",
+          "steps": "Come back to career planning once you and your health worker feel ready."
+        }
+      ]
+    },
+    {
+      "name": "Care first",
+      "description": "Focus on your wellbeing first, with light preparation for work only when you feel able.",
+      "phases": [
+        {
+          "weeks": "Weeks 1–4",
+          "steps": "Weeks 1–4: Speak to a health worker and agree what support you need. Keep career tasks very light: update one line of your CV, or note one role that interests you."
+        },
+        {
+          "weeks": "Weeks 5–12",
+          "steps": "Weeks 5–12: As you feel stronger, explore your top path: talk to one person who does this work, or try one short free lesson. Repeat the wellbeing check."
+        },
+        {
+          "weeks": "Weeks 13–24",
+          "steps": "Weeks 13–24: If your wellbeing check improves, move to a gradual return plan with flexible or part-time options."
+        }
+      ]
+    },
+    {
+      "name": "Gradual return",
+      "description": "Return step by step, starting flexible or part-time, building confidence and skills as you go.",
+      "phases": [
+        {
+          "weeks": "Weeks 1–4",
+          "steps": "Weeks 1–4: Update your CV and profiles; reconnect with three former colleagues or contacts; confirm childcare arrangements."
+        },
+        {
+          "weeks": "Weeks 5–12",
+          "steps": "Weeks 5–12: Take one short course for your top skill gap; apply for part-time, flexible or project roles; practise interviews."
+        },
+        {
+          "weeks": "Weeks 13–24",
+          "steps": "Weeks 13–24: Start in a part-time or flexible role; review workload and wellbeing monthly; increase hours only if it feels right."
+        }
+      ]
+    },
+    {
+      "name": "Ready to return",
+      "description": "You are in a good place to plan a full return, while keeping an eye on your wellbeing.",
+      "phases": [
+        {
+          "weeks": "Weeks 1–4",
+          "steps": "Weeks 1–4: Update your CV and profiles; reconnect with your network; confirm childcare and a back-up plan."
+        },
+        {
+          "weeks": "Weeks 5–12",
+          "steps": "Weeks 5–12: Close your top skill gaps; apply for full-time or flexible roles; negotiate flexible terms where possible."
+        },
+        {
+          "weeks": "Weeks 13–24",
+          "steps": "Weeks 13–24: Start your role; check your wellbeing monthly; plan your next development step."
+        }
+      ]
+    }
+  ],
+  "profileOptions": {
+    "country": [
+      "Kenya",
+      "Nigeria",
+      "Other"
+    ],
+    "ageGroup": [
+      "Under 18",
+      "18–24",
+      "25–34",
+      "35–44",
+      "45+"
+    ],
+    "monthsSinceBirth": [
+      "0–3 months",
+      "4–6 months",
+      "7–12 months"
+    ],
+    "workSituation": [
+      "On maternity leave",
+      "On a career break",
+      "Working",
+      "Looking for work"
+    ],
+    "careerBreak": [
+      "Less than 6 months",
+      "6–12 months",
+      "1–3 years",
+      "More than 3 years"
+    ]
+  },
+  "skills": [
+    "Communication",
+    "Caring & empathy",
+    "Organisation & planning",
+    "Numbers & money",
+    "Basic digital (email, documents, phone apps)",
+    "Advanced digital or technical",
+    "Creativity & design",
+    "Teaching & training",
+    "Sales & persuasion",
+    "Leading people"
+  ],
+  "skillScale": [
+    {
+      "label": "1 – Not yet",
+      "value": 1
+    },
+    {
+      "label": "2 – Some",
+      "value": 2
+    },
+    {
+      "label": "3 – Good",
+      "value": 3
+    },
+    {
+      "label": "4 – Strong",
+      "value": 4
+    },
+    {
+      "label": "5 – Expert",
+      "value": 5
+    }
+  ],
+  "interests": [
+    {
+      "name": "Helping & caring",
+      "description": "Supporting people's health, wellbeing or development"
+    },
+    {
+      "name": "Organising",
+      "description": "Planning, coordinating, keeping things in order"
+    },
+    {
+      "name": "Creating",
+      "description": "Writing, designing, making content or products"
+    },
+    {
+      "name": "Analysing",
+      "description": "Working with information, numbers and problems"
+    },
+    {
+      "name": "Practical & hands-on",
+      "description": "Making, fixing, growing or producing things"
+    },
+    {
+      "name": "Leading & persuading",
+      "description": "Selling, influencing, starting or running something"
+    }
+  ],
+  "interestScale": [
+    {
+      "label": "1 – Not for me",
+      "value": 1
+    },
+    {
+      "label": "2 – A little",
+      "value": 2
+    },
+    {
+      "label": "3 – Somewhat",
+      "value": 3
+    },
+    {
+      "label": "4 – Quite a lot",
+      "value": 4
+    },
+    {
+      "label": "5 – Very much",
+      "value": 5
+    }
+  ],
+  "workNeeds": {
+    "homeWorking": [
+      "Yes",
+      "No"
+    ],
+    "hours": [
+      "Under 15 hours a week",
+      "15–30 hours a week",
+      "Over 30 hours a week"
+    ],
+    "flexibleHours": [
+      "Yes",
+      "No"
+    ]
+  },
+  "careers": [
+    {
+      "role": "Community health promoter",
+      "interestArea": "Helping & caring",
+      "skillWeights": {
+        "Communication": 3,
+        "Caring & empathy": 3,
+        "Organisation & planning": 2,
+        "Numbers & money": 1,
+        "Basic digital (email, documents, phone apps)": 1,
+        "Advanced digital or technical": 0,
+        "Creativity & design": 0,
+        "Teaching & training": 2,
+        "Sales & persuasion": 1,
+        "Leading people": 1
+      },
+      "remote": false,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Contact your county or local health office about community health roles.",
+      "skillBuilding": "Short course in community health or first aid."
+    },
+    {
+      "role": "Early childhood teacher or caregiver",
+      "interestArea": "Helping & caring",
+      "skillWeights": {
+        "Communication": 3,
+        "Caring & empathy": 3,
+        "Organisation & planning": 2,
+        "Numbers & money": 0,
+        "Basic digital (email, documents, phone apps)": 1,
+        "Advanced digital or technical": 0,
+        "Creativity & design": 2,
+        "Teaching & training": 3,
+        "Sales & persuasion": 0,
+        "Leading people": 1
+      },
+      "remote": false,
+      "partTime": true,
+      "flexible": false,
+      "firstStep": "Visit two local schools or day-care centres and ask about openings.",
+      "skillBuilding": "Certificate in early childhood development."
+    },
+    {
+      "role": "Online tutor",
+      "interestArea": "Helping & caring",
+      "skillWeights": {
+        "Communication": 3,
+        "Caring & empathy": 2,
+        "Organisation & planning": 2,
+        "Numbers & money": 1,
+        "Basic digital (email, documents, phone apps)": 2,
+        "Advanced digital or technical": 1,
+        "Creativity & design": 1,
+        "Teaching & training": 3,
+        "Sales & persuasion": 0,
+        "Leading people": 0
+      },
+      "remote": true,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Create a tutoring profile listing your subjects and set your hours.",
+      "skillBuilding": "Short course in online teaching tools."
+    },
+    {
+      "role": "Virtual or administrative assistant",
+      "interestArea": "Organising",
+      "skillWeights": {
+        "Communication": 2,
+        "Caring & empathy": 0,
+        "Organisation & planning": 3,
+        "Numbers & money": 1,
+        "Basic digital (email, documents, phone apps)": 3,
+        "Advanced digital or technical": 1,
+        "Creativity & design": 0,
+        "Teaching & training": 0,
+        "Sales & persuasion": 0,
+        "Leading people": 0
+      },
+      "remote": true,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Offer admin support to two small businesses or NGOs you know.",
+      "skillBuilding": "Course in office software and online productivity tools."
+    },
+    {
+      "role": "Bookkeeper or accounts assistant",
+      "interestArea": "Analysing",
+      "skillWeights": {
+        "Communication": 1,
+        "Caring & empathy": 0,
+        "Organisation & planning": 2,
+        "Numbers & money": 3,
+        "Basic digital (email, documents, phone apps)": 2,
+        "Advanced digital or technical": 1,
+        "Creativity & design": 0,
+        "Teaching & training": 0,
+        "Sales & persuasion": 0,
+        "Leading people": 0
+      },
+      "remote": true,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Offer bookkeeping to one small business to build a recent reference.",
+      "skillBuilding": "Bookkeeping or accounting software certificate."
+    },
+    {
+      "role": "Customer support agent",
+      "interestArea": "Organising",
+      "skillWeights": {
+        "Communication": 3,
+        "Caring & empathy": 2,
+        "Organisation & planning": 1,
+        "Numbers & money": 0,
+        "Basic digital (email, documents, phone apps)": 2,
+        "Advanced digital or technical": 1,
+        "Creativity & design": 0,
+        "Teaching & training": 0,
+        "Sales & persuasion": 1,
+        "Leading people": 0
+      },
+      "remote": true,
+      "partTime": true,
+      "flexible": false,
+      "firstStep": "Apply to two companies hiring remote or shift-based support agents.",
+      "skillBuilding": "Customer service skills course."
+    },
+    {
+      "role": "Social media or content manager",
+      "interestArea": "Creating",
+      "skillWeights": {
+        "Communication": 3,
+        "Caring & empathy": 0,
+        "Organisation & planning": 2,
+        "Numbers & money": 0,
+        "Basic digital (email, documents, phone apps)": 2,
+        "Advanced digital or technical": 1,
+        "Creativity & design": 3,
+        "Teaching & training": 0,
+        "Sales & persuasion": 2,
+        "Leading people": 0
+      },
+      "remote": true,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Build a small portfolio by running social media for one local business.",
+      "skillBuilding": "Digital marketing short course."
+    },
+    {
+      "role": "Graphic designer",
+      "interestArea": "Creating",
+      "skillWeights": {
+        "Communication": 1,
+        "Caring & empathy": 0,
+        "Organisation & planning": 1,
+        "Numbers & money": 0,
+        "Basic digital (email, documents, phone apps)": 2,
+        "Advanced digital or technical": 2,
+        "Creativity & design": 3,
+        "Teaching & training": 0,
+        "Sales & persuasion": 1,
+        "Leading people": 0
+      },
+      "remote": true,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Put five of your designs into an online portfolio.",
+      "skillBuilding": "Design software course."
+    },
+    {
+      "role": "Junior web or software developer",
+      "interestArea": "Analysing",
+      "skillWeights": {
+        "Communication": 1,
+        "Caring & empathy": 0,
+        "Organisation & planning": 2,
+        "Numbers & money": 1,
+        "Basic digital (email, documents, phone apps)": 2,
+        "Advanced digital or technical": 3,
+        "Creativity & design": 1,
+        "Teaching & training": 0,
+        "Sales & persuasion": 0,
+        "Leading people": 0
+      },
+      "remote": true,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Build one small project and share it online.",
+      "skillBuilding": "Coding bootcamp or structured online course."
+    },
+    {
+      "role": "Data or research assistant",
+      "interestArea": "Analysing",
+      "skillWeights": {
+        "Communication": 2,
+        "Caring & empathy": 0,
+        "Organisation & planning": 2,
+        "Numbers & money": 2,
+        "Basic digital (email, documents, phone apps)": 2,
+        "Advanced digital or technical": 2,
+        "Creativity & design": 0,
+        "Teaching & training": 0,
+        "Sales & persuasion": 0,
+        "Leading people": 0
+      },
+      "remote": true,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Offer data collection or analysis support to a local research or NGO team.",
+      "skillBuilding": "Course in spreadsheets and data analysis."
+    },
+    {
+      "role": "Programme or project officer (NGO)",
+      "interestArea": "Organising",
+      "skillWeights": {
+        "Communication": 3,
+        "Caring & empathy": 1,
+        "Organisation & planning": 3,
+        "Numbers & money": 1,
+        "Basic digital (email, documents, phone apps)": 2,
+        "Advanced digital or technical": 0,
+        "Creativity & design": 0,
+        "Teaching & training": 1,
+        "Sales & persuasion": 1,
+        "Leading people": 2
+      },
+      "remote": false,
+      "partTime": false,
+      "flexible": true,
+      "firstStep": "Reconnect with NGOs you know and ask about upcoming programmes.",
+      "skillBuilding": "Project management short course."
+    },
+    {
+      "role": "HR or recruitment assistant",
+      "interestArea": "Organising",
+      "skillWeights": {
+        "Communication": 3,
+        "Caring & empathy": 2,
+        "Organisation & planning": 3,
+        "Numbers & money": 0,
+        "Basic digital (email, documents, phone apps)": 2,
+        "Advanced digital or technical": 0,
+        "Creativity & design": 0,
+        "Teaching & training": 1,
+        "Sales & persuasion": 1,
+        "Leading people": 1
+      },
+      "remote": false,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Join a professional HR network and attend one event.",
+      "skillBuilding": "HR or recruitment certificate."
+    },
+    {
+      "role": "Sales or business development",
+      "interestArea": "Leading & persuading",
+      "skillWeights": {
+        "Communication": 3,
+        "Caring & empathy": 1,
+        "Organisation & planning": 1,
+        "Numbers & money": 1,
+        "Basic digital (email, documents, phone apps)": 1,
+        "Advanced digital or technical": 0,
+        "Creativity & design": 0,
+        "Teaching & training": 0,
+        "Sales & persuasion": 3,
+        "Leading people": 1
+      },
+      "remote": false,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "List ten people or businesses who might need what you could sell.",
+      "skillBuilding": "Sales and negotiation course."
+    },
+    {
+      "role": "Small business owner (food, tailoring, retail)",
+      "interestArea": "Leading & persuading",
+      "skillWeights": {
+        "Communication": 2,
+        "Caring & empathy": 1,
+        "Organisation & planning": 2,
+        "Numbers & money": 2,
+        "Basic digital (email, documents, phone apps)": 1,
+        "Advanced digital or technical": 0,
+        "Creativity & design": 2,
+        "Teaching & training": 0,
+        "Sales & persuasion": 3,
+        "Leading people": 1
+      },
+      "remote": false,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Test your idea by selling to ten customers in your network.",
+      "skillBuilding": "Small business or entrepreneurship course."
+    },
+    {
+      "role": "Agribusiness or urban farming",
+      "interestArea": "Practical & hands-on",
+      "skillWeights": {
+        "Communication": 1,
+        "Caring & empathy": 0,
+        "Organisation & planning": 2,
+        "Numbers & money": 2,
+        "Basic digital (email, documents, phone apps)": 1,
+        "Advanced digital or technical": 0,
+        "Creativity & design": 0,
+        "Teaching & training": 0,
+        "Sales & persuasion": 2,
+        "Leading people": 1
+      },
+      "remote": false,
+      "partTime": true,
+      "flexible": true,
+      "firstStep": "Visit a local farmers' group or cooperative to learn about markets.",
+      "skillBuilding": "Agribusiness or value-addition training."
+    }
+  ]
+}
+```

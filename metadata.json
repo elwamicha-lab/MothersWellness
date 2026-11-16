@@ -1,0 +1,8 @@
+{
+  "name": "Wellness Conversations for working mothers",
+  "description": "Your wellbeing and your way back to work. A guided, community-centred conversation prototype supporting maternal wellbeing screening and tailored 24-week career re-entry planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
